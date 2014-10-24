@@ -37,11 +37,19 @@ class SQLObject
   end
 
   def self.all
-    # ...
+    query = <<-SQL
+    SELECT
+      #{self.table_name}.*
+    FROM
+      #{self.table_name}
+    SQL
+    self.parse_all(DBConnection.execute(query))
   end
 
   def self.parse_all(results)
-    # ...
+    results.map do |result|
+      self.new(result)
+    end
   end
 
   def self.find(id)
@@ -49,7 +57,14 @@ class SQLObject
   end
 
   def initialize(params = {})
-    # ...
+    params.each do |attr_name, value|
+      attr_sym = attr_name.to_sym
+      unless self.class::columns.include?(attr_sym)
+        raise Exception.new("unknown attribute '#{attr_sym}'")
+      else
+        send("#{attr_name}=", value)
+      end
+    end
   end
 
   def attributes
