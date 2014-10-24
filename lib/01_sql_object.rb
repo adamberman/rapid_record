@@ -53,7 +53,15 @@ class SQLObject
   end
 
   def self.find(id)
-    # ...
+    query = <<-SQL
+    SELECT
+      #{self.table_name}.*
+    FROM
+      #{self.table_name}
+    WHERE
+      id = ?
+    SQL
+    self.parse_all(DBConnection.execute(query, id)).first
   end
 
   def initialize(params = {})
@@ -72,15 +80,33 @@ class SQLObject
   end
 
   def attribute_values
-    # ...
+    self.class::columns.map { |column| self.send(column) }
   end
 
   def insert
-    # ...
+    col_names = self.class::columns.join(',')
+    question_marks = (["?"] * self.class::columns.length).join(',')
+    query = <<-SQL
+    INSERT INTO
+      #{self.class.table_name} (#{col_names})
+    VALUES
+      (#{question_marks})
+    SQL
+    DBConnection.execute(query, *attribute_values)
+    self.id = DBConnection.last_insert_row_id
   end
 
   def update
-    # ...
+    set_line = self.class::columns.map { |col| "#{col} = ?"}.join(',')
+    query = <<-SQL
+    UPDATE
+      #{self.class.table_name}
+    SET
+      #{set_line}
+    WHERE
+      id = ?
+    SQL
+    DBConnection.execute(query, *attribute_values, self.id)
   end
 
   def save
